@@ -1,311 +1,390 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+
+interface Product {
+  id: number;
+  title: string;
+  price: number;
+  discount: string;
+  category: string;
+  seller: string;
+  img: string;
+  rating?: number;
+  sold?: number;
+}
+
+interface UserProfile {
+  name: string;
+  phone: string;
+  address: string;
+}
+
+interface Order {
+  id: string;
+  userName: string;
+  userPhone: string;
+  userAddress: string;
+  items: Product[];
+  totalAmount: number;
+  date: string;
+  status: 'To Pay' | 'To Ship' | 'To Receive' | 'To Review';
+}
 
 export default function App() {
-  const [activeTab, setActiveTab] = useState('home');
-  const [searchQuery, setSearchQuery] = useState('');
-  
-  // Auth State
-  const [isLoggedIn, setIsLoggedIn] = useState(false);
-  const [authPhone, setAuthPhone] = useState('');
-  const [authPass, setAuthPass] = useState('');
+  const [activeTab, setActiveTab] = useState<'shop' | 'messages' | 'cart' | 'account' | 'post' | 'admin'>('shop');
 
-  // Cart & Posts State
-  const [cartItems, setCartItems] = useState<any[]>([]);
-  const [posts, setPosts] = useState<any[]>([
-    { title: 'স্মার্ট ওয়াচ প্রিমিয়াম এডিশন', price: '৳১৫০০', desc: 'দারুণ লুকিং স্মার্ট ওয়াচ।', seller: 'রকিবুল ইসলাম' }
+  const [user, setUser] = useState<UserProfile | null>(() => {
+    const savedUser = localStorage.getItem('bss_user');
+    return savedUser ? JSON.parse(savedUser) : null;
+  });
+
+  const [loginName, setLoginName] = useState('');
+  const [loginPhone, setLoginPhone] = useState('');
+  const [loginAddress, setLoginAddress] = useState('');
+
+  const [products, setProducts] = useState<Product[]>([
+    { 
+      id: 1, 
+      title: 'স্মার্ট ওয়াচ (Smart Watch)', 
+      price: 551, 
+      discount: '-72%', 
+      category: 'গ্যাজেট', 
+      seller: 'রনি ট্রেইডার্স', 
+      img: 'https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=300&auto=format&fit=crop&q=60',
+      rating: 4.8,
+      sold: 120
+    },
+    { 
+      id: 2, 
+      title: 'এয়ারপডস প্রু (Airpods Pro)', 
+      price: 249, 
+      discount: '-71%', 
+      category: 'গ্যাজেট', 
+      seller: 'সাফওয়ান স্টোর', 
+      img: 'https://images.unsplash.com/photo-1600294037681-c80b4cb5b434?w=300&auto=format&fit=crop&q=60',
+      rating: 4.5,
+      sold: 85
+    },
+    { 
+      id: 3, 
+      title: 'ম্যাসাজ গান (Massage Gun)', 
+      price: 464, 
+      discount: '-54%', 
+      category: 'হেলথ', 
+      seller: 'বরিশাল মার্ট', 
+      img: 'https://images.unsplash.com/photo-1544367567-0f2fcb009e0b?w=300&auto=format&fit=crop&q=60',
+      rating: 4.2,
+      sold: 46
+    },
   ]);
-  
-  // New Post State
+
+  const [cart, setCart] = useState<Product[]>([]);
+  const [recentlyViewed, setRecentlyViewed] = useState<Product[]>([]);
+
+  const [orders, setOrders] = useState<Order[]>(() => {
+    const savedOrders = localStorage.getItem('bss_orders');
+    return savedOrders ? JSON.parse(savedOrders) : [];
+  });
+
   const [postTitle, setPostTitle] = useState('');
   const [postPrice, setPostPrice] = useState('');
-  const [postDesc, setPostDesc] = useState('');
+  const [postCategory, setPostCategory] = useState('গ্যাজেট');
+  const [sellerName, setSellerName] = useState('');
+  const [postPhone, setPostPhone] = useState('');
+  const [postImage, setPostImage] = useState<string>('https://images.unsplash.com/photo-1526170375885-4d8ecf77b99f?w=300&auto=format&fit=crop&q=60');
 
-  // Order Form State
-  const [orderProduct, setOrderProduct] = useState('');
-  const [buyerName, setBuyerName] = useState('');
-  const [buyerPhone, setBuyerPhone] = useState('');
-  const [buyerAddress, setBuyerAddress] = useState('');
-  const [orderSuccess, setOrderSuccess] = useState(false);
+  useEffect(() => {
+    localStorage.setItem('bss_orders', JSON.stringify(orders));
+  }, [orders]);
 
-  // Add to cart
-  const addToCart = (item: any) => {
-    setCartItems([...cartItems, item]);
-    alert(`"${item.name}" কার্টে যোগ করা হয়েছে!`);
-  };
-
-  // Handle Login
   const handleLogin = (e: React.FormEvent) => {
     e.preventDefault();
-    if (authPhone.trim()) {
-      setIsLoggedIn(true);
-      alert('সফলভাবে লগইন হয়েছে!');
+    if (!loginName || !loginPhone) {
+      alert('অনুগ্রহ করে নাম এবং মোবাইল নম্বর দিন!');
+      return;
+    }
+    const profile: UserProfile = {
+      name: loginName,
+      phone: loginPhone,
+      address: loginAddress,
+    };
+    setUser(profile);
+    localStorage.setItem('bss_user', JSON.stringify(profile));
+  };
+
+  const handleProductClick = (p: Product) => {
+    if (!recentlyViewed.some(item => item.id === p.id)) {
+      setRecentlyViewed([p, ...recentlyViewed]);
     }
   };
 
-  // Handle Post Creation
-  const handleCreatePost = (e: React.FormEvent) => {
+  const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files[0]) {
+      const file = e.target.files[0];
+      const reader = new FileReader();
+      reader.onloadend = () => setPostImage(reader.result as string);
+      reader.readAsDataURL(file);
+    }
+  };
+
+  const handlePostSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!postTitle || !postPrice) return;
-    const newAd = { title: postTitle, price: postPrice, desc: postDesc, seller: authPhone || 'গ্রাহক' };
-    setPosts([newAd, ...posts]);
+    if (!postTitle || !postPrice || !sellerName || !postPhone) {
+      alert('সকল তথ্য সঠিকভাবে পূরণ করুন!');
+      return;
+    }
+
+    const newProduct: Product = {
+      id: Date.now(),
+      title: postTitle,
+      price: Number(postPrice),
+      discount: 'NEW',
+      category: postCategory,
+      seller: `${sellerName} (${postPhone})`,
+      img: postImage,
+      rating: 5.0,
+      sold: 0
+    };
+
+    setProducts([newProduct, ...products]);
     setPostTitle('');
     setPostPrice('');
-    setPostDesc('');
-    alert('আপনার বিজ্ঞাপন সফলভাবে পাবলিশ হয়েছে!');
-    setActiveTab('home');
+    setSellerName('');
+    setPostPhone('');
+    setActiveTab('shop');
+    alert('আপনার পণ্যটি পোস্ট করা হয়েছে!');
   };
 
-  // Handle Telegram Order
-  const handleTelegramOrder = (e: React.FormEvent) => {
-    e.preventDefault();
-    const chatId = "8633414899"; // আপনার টেলিগ্রাম আইডি
-    const message = `🚨 নতুন অর্ডার এসেছে!\n\n🛍️ পণ্য: ${orderProduct}\n👤 নাম: ${buyerName}\n📞 ফোন: ${buyerPhone}\n📍 ঠিকানা: ${buyerAddress}`;
-    
-    console.log("Sending Telegram notification to ID:", chatId, message);
-    setOrderSuccess(true);
+  const handlePlaceOrder = () => {
+    if (!user || cart.length === 0) return;
+
+    const newOrder: Order = {
+      id: 'ORD-' + Math.floor(100000 + Math.random() * 900000),
+      userName: user.name,
+      userPhone: user.phone,
+      userAddress: user.address || 'ঠিকানা দেওয়া হয়নি',
+      items: cart,
+      totalAmount: cart.reduce((sum, item) => sum + item.price, 0),
+      date: new Date().toLocaleString('bn-BD'),
+      status: 'To Ship'
+    };
+
+    setOrders([newOrder, ...orders]);
+    setCart([]);
+    alert(`আপনার অর্ডারটি সফলভাবে নেওয়া হয়েছে!\nঅর্ডার আইডি: ${newOrder.id}`);
   };
+
+  if (!user) {
+    return (
+      <div style={{ maxWidth: '480px', margin: '0 auto', backgroundColor: '#f4f4f5', minHeight: '100vh', fontFamily: 'sans-serif', padding: '20px', boxSizing: 'border-box', display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
+        <div style={{ backgroundColor: '#fff', padding: '24px', borderRadius: '12px', boxShadow: '0 4px 6px rgba(0,0,0,0.1)' }}>
+          <h2 style={{ textAlign: 'center', color: '#f57224', marginTop: 0 }}>বরিশাল সুপার শপ</h2>
+          <p style={{ textAlign: 'center', color: '#52525b', fontSize: '14px', marginBottom: '20px' }}>লগইন করে কেনাকাটা শুরু করুন</p>
+          
+          <form onSubmit={handleLogin} style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+            <div>
+              <label style={{ fontSize: '12px', fontWeight: 'bold' }}>আপনার নাম *</label>
+              <input type="text" required placeholder="উদাহরণ: সানি" value={loginName} onChange={(e) => setLoginName(e.target.value)} style={{ width: '100%', padding: '10px', borderRadius: '6px', border: '1px solid #ccc', marginTop: '4px', boxSizing: 'border-box' }} />
+            </div>
+
+            <div>
+              <label style={{ fontSize: '12px', fontWeight: 'bold' }}>মোবাইল নম্বর *</label>
+              <input type="tel" required placeholder="017xxxxxxxx" value={loginPhone} onChange={(e) => setLoginPhone(e.target.value)} style={{ width: '100%', padding: '10px', borderRadius: '6px', border: '1px solid #ccc', marginTop: '4px', boxSizing: 'border-box' }} />
+            </div>
+
+            <div>
+              <label style={{ fontSize: '12px', fontWeight: 'bold' }}>ডেলিভারি ঠিকানা (ঐচ্ছিক)</label>
+              <textarea placeholder="আপনার এলাকা/রোড নং/বাড়ি নং" value={loginAddress} onChange={(e) => setLoginAddress(e.target.value)} style={{ width: '100%', padding: '10px', borderRadius: '6px', border: '1px solid #ccc', marginTop: '4px', boxSizing: 'border-box', height: '60px' }} />
+            </div>
+
+            <button type="submit" style={{ backgroundColor: '#f57224', color: '#fff', border: 'none', padding: '12px', borderRadius: '6px', fontWeight: 'bold', fontSize: '15px', cursor: 'pointer', marginTop: '10px' }}>
+              প্রবেশ করুন
+            </button>
+          </form>
+        </div>
+      </div>
+    );
+  }
 
   return (
-    <div className="min-h-screen pb-24 font-sans bg-gray-100 text-gray-900 max-w-md mx-auto shadow-xl relative">
-      {/* Top Search Bar */}
-      <div className="bg-pink-600 p-2.5 sticky top-0 z-30 shadow-md">
-        <div className="flex items-center gap-2">
-          <div className="relative w-full flex items-center bg-white rounded-full px-3 py-1.5 shadow-inner">
-            <input
-              type="text"
-              placeholder="পণ্য বা বিজ্ঞাপন খুঁজুন..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full text-xs text-black outline-none pr-6 bg-transparent"
-            />
-            <span className="text-gray-500 text-sm">🔍</span>
-          </div>
-          <button className="bg-pink-700 text-white font-bold text-xs px-3 py-1.5 rounded-full border border-pink-400">
-            Search
+    <div style={{ maxWidth: '480px', margin: '0 auto', backgroundColor: '#f4f4f5', minHeight: '100vh', fontFamily: 'sans-serif', paddingBottom: '70px' }}>
+      
+      {/* Header */}
+      <div style={{ backgroundColor: '#f57224', color: '#fff', padding: '12px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', position: 'sticky', top: 0, zIndex: 20 }}>
+        <div>
+          <h2 style={{ margin: 0, fontSize: '18px', fontWeight: 'bold' }}>বরিশাল সুপার শপ</h2>
+          <small style={{ fontSize: '11px', opacity: 0.9 }}>👤 {user.name}</small>
+        </div>
+        <div style={{ display: 'flex', gap: '6px' }}>
+          <button onClick={() => setActiveTab('post')} style={{ backgroundColor: '#fff', color: '#f57224', border: 'none', padding: '6px 10px', borderRadius: '20px', fontSize: '11px', fontWeight: 'bold', cursor: 'pointer' }}>
+            ➕ বিক্রি করুন
+          </button>
+          <button onClick={() => setActiveTab('admin')} style={{ backgroundColor: '#111', color: '#fff', border: 'none', padding: '6px 10px', borderRadius: '20px', fontSize: '11px', fontWeight: 'bold', cursor: 'pointer' }}>
+            ⚙️ এডমিন
           </button>
         </div>
-
-        <div className="flex justify-between text-[10px] text-white mt-2 px-1 font-medium">
-          <span>💳 Safe Payment</span>
-          <span>🚚 Fast Delivery</span>
-          <span>🔄 Free Return</span>
-        </div>
       </div>
 
-      {/* Main Content Area */}
-      <main className="p-2 space-y-3">
-        {activeTab === 'home' && (
-          <div>
-            {/* Top Categories Grid */}
-            <div className="grid grid-cols-5 gap-1 text-center text-[10px] bg-white p-2 rounded-xl shadow-sm mb-3">
-              <div className="p-1"><div className="bg-yellow-400 rounded-full w-8 h-8 mx-auto flex items-center justify-center font-bold text-xs text-white">🪙</div><span className="mt-1 block">Coins</span></div>
-              <div className="p-1"><div className="bg-orange-500 rounded-full w-8 h-8 mx-auto flex items-center justify-center font-bold text-[9px] text-white">CHOICE</div><span className="mt-1 block">Choice</span></div>
-              <div className="p-1"><div className="bg-purple-600 rounded-full w-8 h-8 mx-auto flex items-center justify-center font-bold text-xs text-white">📱</div><span className="mt-1 block">Mobile</span></div>
-              <div className="p-1"><div className="bg-pink-500 rounded-full w-8 h-8 mx-auto flex items-center justify-center font-bold text-xs text-white">🎁</div><span className="mt-1 block">Freebie</span></div>
-              <div className="p-1"><div className="bg-red-500 rounded-full w-8 h-8 mx-auto flex items-center justify-center font-bold text-[9px] text-white">BUY</div><span className="mt-1 block">Save More</span></div>
+      {/* SHOP TAB (Your Original App Content) */}
+      {activeTab === 'shop' && (
+        <div>
+          <div style={{ backgroundColor: '#fff', padding: '10px 12px', borderBottom: '1px solid #e4e4e7' }}>
+            <div style={{ display: 'flex', gap: '8px' }}>
+              <input type="text" placeholder="পণ্য খুঁজুন..." style={{ flex: 1, padding: '8px 12px', borderRadius: '20px', border: '1px solid #d4d4d8', outline: 'none', fontSize: '13px' }} />
+              <button style={{ backgroundColor: '#f57224', color: '#fff', border: 'none', borderRadius: '20px', padding: '8px 16px', fontWeight: 'bold', fontSize: '12px' }}>Search</button>
             </div>
+          </div>
 
-            {/* Flash Sale Section */}
-            <div className="bg-white p-2 rounded-xl shadow-sm mb-3">
-              <div className="flex justify-between items-center mb-2">
-                <span className="font-extrabold text-xs text-pink-600">Flash Sale ⚡</span>
-                <span className="text-[11px] text-gray-500 font-medium">Shop More &gt;</span>
-              </div>
-
-              <div className="grid grid-cols-3 gap-2">
-                <div className="border rounded-lg p-1 relative text-center bg-gray-50">
-                  <span className="absolute top-1 right-1 bg-red-500 text-white text-[8px] font-bold px-1 rounded">-54%</span>
-                  <img src="https://images.unsplash.com/photo-1553062407-98eeb64c6a62?w=300&auto=format&fit=crop&q=60" alt="Bag" className="w-full h-20 object-cover rounded mb-1" />
-                  <p className="text-[10px] line-clamp-1 font-medium">ব্যাকপ্যাক ব্যাগ</p>
-                  <p className="text-pink-600 font-bold text-xs">৳580</p>
-                  <button onClick={() => addToCart({ name: 'ব্যাকপ্যাক ব্যাগ', price: 580 })} className="w-full mt-1 bg-pink-600 text-white text-[10px] py-1 rounded font-bold">Add</button>
-                </div>
-                <div className="border rounded-lg p-1 relative text-center bg-gray-50">
-                  <span className="absolute top-1 right-1 bg-red-500 text-white text-[8px] font-bold px-1 rounded">-70%</span>
-                  <img src="https://images.unsplash.com/photo-1590658268037-6bf12165a8df?w=300&auto=format&fit=crop&q=60" alt="Earbuds" className="w-full h-20 object-cover rounded mb-1" />
-                  <p className="text-[10px] line-clamp-1 font-medium">ওয়্যারলেস এয়ারবাডস</p>
-                  <p className="text-pink-600 font-bold text-xs">৳365</p>
-                  <button onClick={() => addToCart({ name: 'ওয়্যারলেস এয়ারবাডস', price: 365 })} className="w-full mt-1 bg-pink-600 text-white text-[10px] py-1 rounded font-bold">Add</button>
-                </div>
-                <div className="border rounded-lg p-1 relative text-center bg-gray-50">
-                  <span className="absolute top-1 right-1 bg-red-500 text-white text-[8px] font-bold px-1 rounded">-65%</span>
-                  <img src="https://images.unsplash.com/photo-1585320806297-9794b3e4eeae?w=300&auto=format&fit=crop&q=60" alt="Seeds" className="w-full h-20 object-cover rounded mb-1" />
-                  <p className="text-[10px] line-clamp-1 font-medium">মিক্সড কালার বীজ</p>
-                  <p className="text-pink-600 font-bold text-xs">৳33</p>
-                  <button onClick={() => addToCart({ name: 'মিক্সড কালার বীজ', price: 33 })} className="w-full mt-1 bg-pink-600 text-white text-[10px] py-1 rounded font-bold">Add</button>
-                </div>
-              </div>
-            </div>
-
-            {/* User Community / Posts Feed */}
-            <div className="bg-white p-3 rounded-xl shadow-sm mb-3">
-              <h3 className="font-bold text-xs text-pink-600 mb-2 border-b pb-1">📢 ব্যবহারকারীদের বিজ্ঞাপনসমূহ</h3>
-              <div className="space-y-2">
-                {posts.map((item, idx) => (
-                  <div key={idx} className="border p-2 rounded bg-gray-50 text-xs">
-                    <div className="flex justify-between font-bold text-pink-600">
-                      <span>{item.title}</span>
-                      <span>{item.price}</span>
+          <div style={{ padding: '12px' }}>
+            <h3 style={{ fontSize: '15px', color: '#27272a', marginBottom: '10px' }}>সর্বশেষ পণ্যসমূহ 🛍️️</h3>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '10px' }}>
+              {products.map((p) => (
+                <div key={p.id} onClick={() => handleProductClick(p)} style={{ backgroundColor: '#fff', borderRadius: '8px', padding: '8px', border: '1px solid #e4e4e7', display: 'flex', flexDirection: 'column', justifyContent: 'space-between', cursor: 'pointer' }}>
+                  <div>
+                    <img src={p.img} alt={p.title} style={{ width: '100%', height: '120px', objectFit: 'cover', borderRadius: '6px' }} />
+                    <span style={{ fontSize: '9px', backgroundColor: '#f3f4f6', padding: '2px 6px', borderRadius: '4px', color: '#4b5563', display: 'inline-block', marginTop: '4px' }}>{p.category}</span>
+                    <h4 style={{ margin: '4px 0', fontSize: '13px', color: '#18181b', lineHeight: '1.2' }}>{p.title}</h4>
+                    {p.rating && (
+                      <div style={{ fontSize: '10px', color: '#f59e0b', margin: '2px 0' }}>
+                        ⭐ {p.rating} | <span style={{ color: '#71717a' }}>{p.sold} Sold</span>
+                      </div>
+                    )}
+                  </div>
+                  <div style={{ marginTop: '8px' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
+                      <span style={{ color: '#f57224', fontWeight: 'bold', fontSize: '14px' }}>৳{p.price}</span>
+                      <span style={{ backgroundColor: '#ffe4e6', color: '#f57224', fontSize: '10px', padding: '1px 4px', borderRadius: '3px', fontWeight: 'bold' }}>{p.discount}</span>
                     </div>
-                    <p className="text-gray-600 mt-1">{item.desc}</p>
-                    <p className="text-[9px] text-gray-400 mt-1">বিক্রেতা: {item.seller}</p>
+                    <button 
+                      onClick={(e) => { e.stopPropagation(); setCart([...cart, p]); alert('কার্টে যোগ করা হয়েছে!'); }}
+                      style={{ width: '100%', backgroundColor: '#2563eb', color: '#fff', border: 'none', padding: '6px', borderRadius: '6px', fontSize: '11px', fontWeight: 'bold', cursor: 'pointer' }}
+                    >
+                      🛒 কার্টে যোগ করুন
+                    </button>
                   </div>
-                ))}
-              </div>
-            </div>
-
-            {/* Direct Order Form (Sends Telegram Message) */}
-            <div className="bg-white p-3 rounded-xl shadow-sm border border-pink-100">
-              <h3 className="font-bold text-xs text-pink-600 mb-2 border-b pb-1">📦 সরাসরি অর্ডার করুন (টেলিগ্রাম নোটিফিকেশন সহ)</h3>
-              {orderSuccess ? (
-                <div className="text-center py-3 text-green-600 font-bold text-xs">
-                  ✅ অর্ডার সফল! আপনার তথ্য টেলিগ্রাম বটে (`8633414899`) পাঠিয়ে দেওয়া হয়েছে।
-                  <button onClick={() => setOrderSuccess(false)} className="block mx-auto mt-2 bg-pink-600 text-white px-3 py-1 rounded text-[10px]">আরেকটি অর্ডার</button>
                 </div>
-              ) : (
-                <form onSubmit={handleTelegramOrder} className="space-y-2 text-xs">
-                  <input type="text" required placeholder="পণ্যের নাম লিখুন" value={orderProduct} onChange={(e) => setOrderProduct(e.target.value)} className="w-full border rounded p-1.5 outline-none focus:border-pink-600" />
-                  <input type="text" required placeholder="আপনার নাম" value={buyerName} onChange={(e) => setBuyerName(e.target.value)} className="w-full border rounded p-1.5 outline-none focus:border-pink-600" />
-                  <input type="tel" required placeholder="মোবাইল নাম্বার" value={buyerPhone} onChange={(e) => setBuyerPhone(e.target.value)} className="w-full border rounded p-1.5 outline-none focus:border-pink-600" />
-                  <textarea required rows={2} placeholder="পূর্ণ ঠিকানা" value={buyerAddress} onChange={(e) => setBuyerAddress(e.target.value)} className="w-full border rounded p-1.5 outline-none focus:border-pink-600" />
-                  <button type="submit" className="w-full bg-pink-600 text-white py-2 rounded font-bold shadow">অর্ডার কনফার্ম করুন</button>
-                </form>
-              )}
+              ))}
             </div>
           </div>
-        )}
+        </div>
+      )}
 
-        {activeTab === 'messages' && (
-          <div className="bg-white p-6 rounded-xl shadow-sm text-center space-y-3 text-xs">
-            <div className="text-3xl">💬</div>
-            <h3 className="font-bold text-sm">টেলিগ্রাম চ্যাট ও নোটিফিকেশন</h3>
-            <p className="text-gray-500">আপনার টেলিগ্রাম আইডি (<span className="font-bold text-pink-600">8633414899</span>)-এর সাথে সফলভাবে কানেক্টেড রয়েছে।</p>
+      {/* MESSAGES TAB (New Addition) */}
+      {activeTab === 'messages' && (
+        <div style={{ padding: '12px' }}>
+          <h3 style={{ margin: '0 0 12px 0', fontSize: '16px' }}>📩 Messages & Notifications</h3>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+            <div style={{ backgroundColor: '#fff', padding: '12px', borderRadius: '8px', borderLeft: '4px solid #f57224', boxShadow: '0 1px 3px rgba(0,0,0,0.05)' }}>
+              <div style={{ fontSize: '12px', color: '#f57224', fontWeight: 'bold' }}>📢 FUN COINS SATURDAY WITH FREE GIFTS</div>
+              <p style={{ margin: '4px 0', fontSize: '13px', color: '#3f3f46' }}>40% OFF + free gifts from Treasure Chest!</p>
+              <small style={{ fontSize: '10px', color: '#a1a1aa' }}>Yesterday</small>
+            </div>
+
+            <div style={{ backgroundColor: '#fff', padding: '12px', borderRadius: '8px', borderLeft: '4px solid #16a34a', boxShadow: '0 1px 3px rgba(0,0,0,0.05)' }}>
+              <div style={{ fontSize: '12px', color: '#16a34a', fontWeight: 'bold' }}>🚚 Fast Delivery Update</div>
+              <p style={{ margin: '4px 0', fontSize: '13px', color: '#3f3f46' }}>বরিশাল সদরে দ্রুত ডেলিভারি পরিষেবা চালু রয়েছে।</p>
+              <small style={{ fontSize: '10px', color: '#a1a1aa' }}>2 days ago</small>
+            </div>
           </div>
-        )}
+        </div>
+      )}
 
-        {activeTab === 'post' && (
-          <div className="bg-white p-4 rounded-xl shadow-sm space-y-3 text-xs">
-            <h3 className="font-bold border-b pb-2 text-sm text-pink-600">📌 নতুন বিজ্ঞাপন পোস্ট করুন</h3>
-            <form onSubmit={handleCreatePost} className="space-y-2">
-              <input 
-                type="text" 
-                required
-                value={postTitle} 
-                onChange={(e) => setPostTitle(e.target.value)} 
-                placeholder="পণ্যের শিরোনাম" 
-                className="w-full border rounded p-2 outline-none focus:border-pink-600"
-              />
-              <input 
-                type="text" 
-                required
-                value={postPrice} 
-                onChange={(e) => setPostPrice(e.target.value)} 
-                placeholder="দাম (যেমন: ৳৫০০)" 
-                className="w-full border rounded p-2 outline-none focus:border-pink-600"
-              />
-              <textarea 
-                rows={3} 
-                value={postDesc} 
-                onChange={(e) => setPostDesc(e.target.value)} 
-                placeholder="পণ্যের বিস্তারিত বিবরণ..." 
-                className="w-full border rounded p-2 outline-none focus:border-pink-600"
-              />
-              <button type="submit" className="w-full bg-pink-600 text-white py-2 rounded font-bold">বিজ্ঞাপন পাবলিশ করুন</button>
-            </form>
+      {/* CART TAB */}
+      {activeTab === 'cart' && (
+        <div style={{ padding: '12px' }}>
+          <h3 style={{ margin: '0 0 10px 0', fontSize: '16px' }}>🛒 My Cart</h3>
+          {cart.length === 0 ? (
+            <p style={{ textAlign: 'center', color: '#71717a', margin: '40px 0' }}>আপনার কার্টে কোনো পণ্য নেই!</p>
+          ) : (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+              {cart.map((item, index) => (
+                <div key={index} style={{ backgroundColor: '#fff', padding: '10px', borderRadius: '8px', border: '1px solid #e4e4e7', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <div>
+                    <h4 style={{ margin: 0, fontSize: '13px' }}>{item.title}</h4>
+                    <span style={{ color: '#f57224', fontWeight: 'bold', fontSize: '13px' }}>৳{item.price}</span>
+                  </div>
+                  <button onClick={() => setCart(cart.filter((_, i) => i !== index))} style={{ backgroundColor: '#ef4444', color: '#fff', border: 'none', padding: '4px 8px', borderRadius: '4px', fontSize: '11px', cursor: 'pointer' }}>মুছে ফেলুন</button>
+                </div>
+              ))}
+
+              <div style={{ backgroundColor: '#fff', padding: '12px', borderRadius: '8px', border: '1px solid #e4e4e7', marginTop: '10px' }}>
+                <h4 style={{ margin: '0 0 8px 0', color: '#18181b', borderBottom: '1px solid #f4f4f5', paddingBottom: '4px' }}>কাস্টমার ডেলিভারি তথ্য</h4>
+                <p style={{ margin: '4px 0', fontSize: '12px' }}><strong>নাম:</strong> {user.name}</p>
+                <p style={{ margin: '4px 0', fontSize: '12px' }}><strong>ফোন:</strong> {user.phone}</p>
+                <p style={{ margin: '4px 0', fontSize: '12px' }}><strong>ঠিকানা:</strong> {user.address || 'ঠিকানা দেওয়া হয়নি'}</p>
+                <hr style={{ border: 'none', borderTop: '1px dashed #e4e4e7', margin: '8px 0' }} />
+                <h3 style={{ margin: '0 0 10px 0', color: '#f57224' }}>Subtotal: ৳{cart.reduce((sum, item) => sum + item.price, 0)}</h3>
+                <button onClick={handlePlaceOrder} style={{ width: '100%', backgroundColor: '#f57224', color: '#fff', border: 'none', padding: '12px', borderRadius: '6px', fontWeight: 'bold', fontSize: '14px', cursor: 'pointer' }}>
+                  Check Out (ক্যাশ অন ডেলিভারি)
+                </button>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* ACCOUNT TAB (New Addition) */}
+      {activeTab === 'account' && (
+        <div style={{ padding: '12px' }}>
+          <div style={{ backgroundColor: '#fff', padding: '16px', borderRadius: '10px', border: '1px solid #e4e4e7', display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '14px' }}>
+            <div style={{ width: '50px', height: '50px', borderRadius: '50%', backgroundColor: '#f57224', color: '#fff', display: 'flex', justifyContent: 'center', alignItems: 'center', fontWeight: 'bold', fontSize: '20px' }}>
+              {user.name.charAt(0).toUpperCase()}
+            </div>
+            <div>
+              <h3 style={{ margin: 0, fontSize: '16px', color: '#18181b' }}>{user.name}</h3>
+              <p style={{ margin: '2px 0', fontSize: '12px', color: '#71717a' }}>📱 {user.phone}</p>
+            </div>
           </div>
-        )}
 
-        {activeTab === 'cart' && (
-          <div className="bg-white p-4 rounded-xl shadow-sm space-y-3 text-xs">
-            <h3 className="font-bold border-b pb-2 text-sm text-pink-600">🛍️ শপিং কার্ট</h3>
-            {cartItems.length === 0 ? (
-              <p className="text-gray-500 text-center py-4">আপনার কার্ট খালি রয়েছে।</p>
+          <div style={{ backgroundColor: '#fff', padding: '14px', borderRadius: '10px', border: '1px solid #e4e4e7', marginBottom: '14px' }}>
+            <h4 style={{ margin: '0 0 12px 0', fontSize: '14px', color: '#27272a' }}>📦 My Orders</h4>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '8px', textAlign: 'center' }}>
+              <div style={{ backgroundColor: '#fbfcfd', padding: '8px', borderRadius: '6px', border: '1px solid #f3f4f6' }}>
+                <div style={{ fontSize: '18px' }}>💳</div>
+                <span style={{ fontSize: '10px', color: '#4b5563' }}>To Pay</span>
+              </div>
+              <div style={{ backgroundColor: '#fbfcfd', padding: '8px', borderRadius: '6px', border: '1px solid #f3f4f6' }}>
+                <div style={{ fontSize: '18px' }}>📦</div>
+                <span style={{ fontSize: '10px', color: '#4b5563' }}>To Ship</span>
+              </div>
+              <div style={{ backgroundColor: '#fbfcfd', padding: '8px', borderRadius: '6px', border: '1px solid #f3f4f6' }}>
+                <div style={{ fontSize: '18px' }}>🚚</div>
+                <span style={{ fontSize: '10px', color: '#4b5563' }}>To Receive</span>
+              </div>
+              <div style={{ backgroundColor: '#fbfcfd', padding: '8px', borderRadius: '6px', border: '1px solid #f3f4f6' }}>
+                <div style={{ fontSize: '18px' }}>⭐</div>
+                <span style={{ fontSize: '10px', color: '#4b5563' }}>To Review</span>
+              </div>
+            </div>
+          </div>
+
+          <div style={{ backgroundColor: '#fff', padding: '14px', borderRadius: '10px', border: '1px solid #e4e4e7' }}>
+            <h4 style={{ margin: '0 0 10px 0', fontSize: '14px', color: '#27272a' }}>👁️ Recently Viewed</h4>
+            {recentlyViewed.length === 0 ? (
+              <p style={{ fontSize: '12px', color: '#a1a1aa', margin: 0 }}>সম্প্রতি কোনো প্রোডাক্ট দেখা হয়নি</p>
             ) : (
-              <div className="space-y-2">
-                {cartItems.map((item, index) => (
-                  <div key={index} className="flex justify-between items-center border-b pb-2">
-                    <span className="font-medium">{item.name}</span>
-                    <span className="text-pink-600 font-bold">৳{item.price}</span>
+              <div style={{ display: 'flex', gap: '10px', overflowX: 'auto', paddingBottom: '4px' }}>
+                {recentlyViewed.map((item) => (
+                  <div key={item.id} style={{ minWidth: '90px', border: '1px solid #f3f4f6', borderRadius: '6px', padding: '6px', textAlign: 'center' }}>
+                    <img src={item.img} alt={item.title} style={{ width: '100%', height: '60px', objectFit: 'cover', borderRadius: '4px' }} />
+                    <p style={{ margin: '4px 0 0 0', fontSize: '10px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{item.title}</p>
+                    <span style={{ color: '#f57224', fontWeight: 'bold', fontSize: '11px' }}>৳{item.price}</span>
                   </div>
                 ))}
               </div>
             )}
           </div>
-        )}
+        </div>
+      )}
 
-        {activeTab === 'account' && (
-          <div className="bg-white p-4 rounded-xl shadow-sm space-y-4 text-xs">
-            <div className="flex items-center gap-3 border-b pb-3">
-              <div className="w-12 h-12 bg-pink-600 text-white rounded-full flex items-center justify-center font-bold text-lg">👤</div>
+      {/* POST PRODUCT TAB */}
+      {activeTab === 'post' && (
+        <div style={{ padding: '12px' }}>
+          <div style={{ backgroundColor: '#fff', padding: '16px', borderRadius: '10px', border: '1px solid #e4e4e7' }}>
+            <h3 style={{ margin: '0 0 12px 0', color: '#18181b', fontSize: '16px' }}>➕ পণ্য বিক্রির জন্য পোস্ট করুন</h3>
+            <form onSubmit={handlePostSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
               <div>
-                <h4 className="font-bold text-sm">{isLoggedIn ? 'রেজিস্টার্ড ইউজার' : 'নতুন ভিজিটর'}</h4>
-                <p className="text-[10px] text-gray-500">Telegram Bot ID: #8633414899</p>
+                <label style={{ fontSize: '12px', fontWeight: 'bold' }}>পণ্যের ছবি আপলোড</label>
+                <input type="file" accept="image/*" onChange={handleImageChange} style={{ width: '100%', padding: '6px', marginTop: '4px', fontSize: '12px' }} />
               </div>
-            </div>
-
-            {!isLoggedIn ? (
-              <form onSubmit={handleLogin} className="space-y-2 bg-gray-50 p-3 rounded border">
-                <h4 className="font-bold text-pink-600">🔐 লগইন / সাইন আপ</h4>
-                <input 
-                  type="tel" 
-                  required
-                  placeholder="মোবাইল নাম্বার দিন" 
-                  value={authPhone} 
-                  onChange={(e) => setAuthPhone(e.target.value)} 
-                  className="w-full border rounded p-1.5 outline-none"
-                />
-                <input 
-                  type="password" 
-                  required
-                  placeholder="পাসওয়ার্ড" 
-                  value={authPass} 
-                  onChange={(e) => setAuthPass(e.target.value)} 
-                  className="w-full border rounded p-1.5 outline-none"
-                />
-                <button type="submit" className="w-full bg-pink-600 text-white py-1.5 rounded font-bold">প্রবেশ করুন</button>
-              </form>
-            ) : (
-              <div className="text-center py-2 text-green-600 font-bold">
-                ✅ আপনি লগইন অবস্থায় আছেন ({authPhone})
-                <button onClick={() => setIsLoggedIn(false)} className="block mx-auto mt-2 text-red-500 underline text-[10px]">লগআউট</button>
-              </div>
-            )}
-          </div>
-        )}
-      </main>
-
-      {/* Bottom Navigation Bar */}
-      <div className="fixed bottom-0 left-0 right-0 max-w-md mx-auto border-t py-1.5 bg-white flex justify-around text-[10px] text-gray-700 font-medium z-40 shadow-lg">
-        <button onClick={() => setActiveTab('home')} className={activeTab === 'home' ? 'flex flex-col items-center text-pink-600 font-bold' : 'flex flex-col items-center'}>
-          <span className="text-base">🏠</span>
-          <span>For You</span>
-        </button>
-        <button onClick={() => setActiveTab('messages')} className={activeTab === 'messages' ? 'flex flex-col items-center relative text-pink-600 font-bold' : 'flex flex-col items-center relative'}>
-          <span className="text-base">💬</span>
-          <span>Messages</span>
-        </button>
-        
-        <button onClick={() => setActiveTab('post')} className="flex flex-col items-center -mt-4">
-          <div className="bg-gradient-to-r from-orange-500 to-red-600 text-white text-[9px] font-black p-2 rounded-full shadow-lg border-2 border-white text-center leading-tight">
-            ➕<br/><span className="text-[8px]">বিজ্ঞাপন</span>
-          </div>
-        </button>
-
-        <button onClick={() => setActiveTab('cart')} className={activeTab === 'cart' ? 'flex flex-col items-center relative text-pink-600 font-bold' : 'flex flex-col items-center relative'}>
-          <span className="text-base">🛒</span>
-          <span>Cart</span>
-          {cartItems.length > 0 && (
-            <span className="absolute -top-1 right-2 bg-red-500 text-white text-[8px] px-1 rounded-full font-bold">
-              {cartItems.length}
-            </span>
-          )}
-        </button>
-        <button onClick={() => setActiveTab('account')} className={activeTab === 'account' ? 'flex flex-col items-center text-pink-600 font-bold' : 'flex flex-col items-center'}>
-          <span className="text-base">👤</span>
-          <span>Account</span>
-        </button>
-      </div>
-    </div>
-  );
-}
-  
+              <div>
+                <label style={{ fontSize: '12px', fontWeig
